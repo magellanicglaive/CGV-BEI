@@ -2,44 +2,60 @@
 { pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
-  # System packages available in the dev shell
   packages = [
-    pkgs.python313
+    pkgs.python311
     pkgs.python311Packages.venvShellHook
 
-    # Python packages that MUST come from Nix (C/C++ libs included)
-    # pkgs.python313Packages.ipykernel
-    # pkgs.python313Packages.pyzmq
-    # pkgs.python313Packages.numpy
-    pkgs.python313Packages.matplotlib
-    # pkgs.python313Packages.pillow
+    # C++ runtime
+    pkgs.gcc.cc.lib
 
-    # Optional (nice to have)
-    pkgs.gcc                # for compiling Python wheels
-    # pkgs.glibc
-    pkgs.git
+    # OpenGL
+    pkgs.mesa
+    pkgs.libGL
+    pkgs.libGLU
+
+    # X11 (REQUIRED for windowed Panda3D)
+    pkgs.xorg.libX11
+    pkgs.xorg.libXcursor
+    pkgs.xorg.libXrandr
+    pkgs.xorg.libXinerama
+    pkgs.xorg.libXi
+
+    # Audio (optional)
+    pkgs.alsa-lib
+    pkgs.pulseaudio
+    pkgs.openal
   ];
 
-  # Automatically create and activate a virtual environment
-  # inside the dev shell
   venvDir = ".venv";
 
-  # Commands executed every time you enter `nix-shell`
   shellHook = ''
-    echo "🐍 Entering Python 3.11 dev environment"
+    echo "Entering Ursina dev shell (Python 3.11)"
 
-    # Ensure venv is created
-    if [ ! -d "$venvDir" ]; then
-      echo "Creating virtual environment in $venvDir..."
-      python -m venv $venvDir
+    # Force clean venv if Python version changed
+    if [ -d "$venvDir" ]; then
+      rm -rf $venvDir
     fi
 
-    # Activate the venv
+    python -m venv $venvDir
     source $venvDir/bin/activate
 
-    echo "Using Python from: $(which python)"
+    export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [
+      pkgs.gcc.cc.lib
+      pkgs.mesa
+      pkgs.libGL
+      pkgs.libGLU
+      pkgs.xorg.libX11
+      pkgs.xorg.libXcursor
+      pkgs.xorg.libXrandr
+      pkgs.xorg.libXinerama
+      pkgs.xorg.libXi
+      pkgs.alsa-lib
+      pkgs.pulseaudio
+      pkgs.openal
+    ]}:$LD_LIBRARY_PATH
 
-    # Make sure pip doesn't override Nix-installed packages
-    export PIP_IGNORE_INSTALLED=1
+    rm -f Config.prc
   '';
 }
+
